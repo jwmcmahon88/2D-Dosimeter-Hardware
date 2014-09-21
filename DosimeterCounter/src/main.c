@@ -70,8 +70,8 @@ void parse_gcode(const char *line, uint8_t length)
 	// Report current position
 	if (!strcmp(line, "M1001"))
 	{
-		printf("ok\r\n");
-		printf("%"PRId32"\r\n", head_position);
+		printf("ok\n");
+		printf("%"PRId32"\n", head_position);
 		return;
 	}
 
@@ -79,7 +79,7 @@ void parse_gcode(const char *line, uint8_t length)
 	if (!strcmp(line, "M1002"))
 	{
 		head_position = 0;
-		printf("ok\r\n");
+		printf("ok\n");
 		return;
 	}
 	
@@ -88,12 +88,12 @@ void parse_gcode(const char *line, uint8_t length)
 	{
 		if (enable_count)
 		{
-			printf("error: counter is already active\r\n");
+			printf("error: counter is already active\n");
 			return;
 		}
 
 		enable_count = true;
-		printf("ok\r\n");
+		printf("ok\n");
 		return;
 	}
 	
@@ -102,12 +102,12 @@ void parse_gcode(const char *line, uint8_t length)
 	{
 		if (!enable_count)
 		{
-			printf("error: counter is not active\r\n");
+			printf("error: counter is not active\n");
 			return;
 		}
 
 		enable_count = false;
-		printf("ok\r\n");
+		printf("ok\n");
 		return;
 	}
 	
@@ -116,51 +116,51 @@ void parse_gcode(const char *line, uint8_t length)
 	{
 		if (enable_count)
 		{
-			printf("error: cannot read counter while it is active\r\n");
+			printf("error: cannot read counter while it is active\n");
 			return;
 		}
 
 		int32_t channel, start, end;
 		if (sscanf(line, "M1005 %"SCNd32" %"SCNd32" %"SCNd32, &channel, &start, &end) != 3)
 		{
-			printf("error: read command requires three arguments\r\n");
+			printf("error: read command requires three arguments\n");
 			return;
 		}
 
 		if (channel != 0 && channel != 1)
 		{
-			printf("error: channel must be 0 or 1\r\n");
+			printf("error: channel must be 0 or 1\n");
 			return;
 		}
 
 		if (start < 0 || start >= HEAD_STEPS_MAX)
 		{
-			printf("error: start column must be in the range 0..%d\r\n", HEAD_STEPS_MAX);
+			printf("error: start column must be in the range 0..%d\n", HEAD_STEPS_MAX);
 			return;
 		}
 		
 		if (end < 0 || end >= HEAD_STEPS_MAX)
 		{
-			printf("error: end column must be in the range 0..%d\r\n", HEAD_STEPS_MAX);
+			printf("error: end column must be in the range 0..%d\n", HEAD_STEPS_MAX);
 			return;
 		}
 
 		if (start > end)
 		{
-			printf("error: start column must less than or equal to end column\r\n");
+			printf("error: start column must less than or equal to end column\n");
 			return;
 		}
 
-		printf("ok\r\n");
+		printf("ok\n");
 
 		// TODO: This really should transfer in binary,
 		// but text is easier to debug using a terminal
 		uint16_t *output = channel == 1 ? secondary_count : primary_count;
 		for (int32_t i = start; i <= end; i++)
 			printf("%u ", output[i]);
-		printf("\r\n");
+		printf("\n");
 
-		printf("ok\r\n");
+		printf("ok\n");
 		return;
 	}
 	
@@ -169,17 +169,17 @@ void parse_gcode(const char *line, uint8_t length)
 	{
 		if (enable_count)
 		{
-			printf("error: cannot reset counter while it is active\r\n");
+			printf("error: cannot reset counter while it is active\n");
 			return;
 		}
 
 		memset((uint16_t *)primary_count, 0, 2 * HEAD_STEPS_MAX);
 		memset((uint16_t *)secondary_count, 0, 2 * HEAD_STEPS_MAX);
-		printf("ok\r\n");
+		printf("ok\n");
 		return;
 	}
 	
-	printf("error: unknown command '%s'\r\n", line);
+	printf("error: unknown command '%s'\n", line);
 }
 
 int main (void)
@@ -213,10 +213,10 @@ int main (void)
 		{
 			// buflen will wrap to 0 on increment.  Notify the caller of the data loss
 			if (buflen == 255)
-				printf("WARNING: input buffer full.  Buffered data have been discarded.\r\n");
+				printf("WARNING: input buffer full.  Buffered data have been discarded.\n");
 
 			char c = udi_cdc_getc();
-			if (c == '\r' || c == '\n')
+			if (c == '\n')
 			{
 				linebuf[buflen++] = '\0';
 				parse_gcode(linebuf, buflen);
