@@ -1,5 +1,6 @@
 
 #include <asf.h>
+#include <inttypes.h>
 #include <string.h>
 
 #define COUNTER_PIO PIOA
@@ -70,7 +71,7 @@ void parse_gcode(const char *line, uint8_t length)
 	if (!strcmp(line, "M1001"))
 	{
 		printf("ok\r\n");
-		printf("%d\r\n", head_position);
+		printf("%"PRId32"\r\n", head_position);
 		return;
 	}
 
@@ -110,8 +111,8 @@ void parse_gcode(const char *line, uint8_t length)
 		return;
 	}
 	
-	// Read counts
-	if (!strcmp(line, "M1005"))
+	// Read primary counts
+	if (!strncmp(line, "M1005", 5))
 	{
 		if (enable_count)
 		{
@@ -119,17 +120,44 @@ void parse_gcode(const char *line, uint8_t length)
 			return;
 		}
 
-		printf("ok\r\n");
+		int32_t channel, start, end;
+		if (sscanf(line, "M1005 %"SCNd32" %"SCNd32" %"SCNd32, &channel, &start, &end) != 3)
+		{
+			printf("error: read command requires three arguments\r\n");
+			return;
+		}
+
+		if (channel != 0 && channel != 1)
+		{
+			printf("error: channel must be 0 or 1\r\n");
+			return;
+		}
+
+		if (start < 0 || start >= HEAD_STEPS_MAX)
+		{
+			printf("error: start column must be in the range 0..%d\r\n", HEAD_STEPS_MAX);
+			return;
+		}
 		
+		if (end < 0 || end >= HEAD_STEPS_MAX)
+		{
+			printf("error: end column must be in the range 0..%d\r\n", HEAD_STEPS_MAX);
+			return;
+		}
+
+		if (start > end)
+		{
+			printf("error: start column must less than or equal to end column\r\n");
+			return;
+		}
+
+		printf("ok\r\n");
+
 		// TODO: This really should transfer in binary,
 		// but text is easier to debug using a terminal
-		printf("primary:\r\n");
-		for (uint32_t i = 0; i < HEAD_STEPS_MAX; i++)
-			printf("%u ", primary_count[i]);
-		printf("\r\n");
-
-		for (uint32_t i = 0; i < HEAD_STEPS_MAX; i++)
-			printf("%u ", secondary_count[i]);
+		uint16_t *output = channel == 1 ? secondary_count : primary_count;
+		for (int32_t i = start; i <= end; i++)
+			printf("%u ", output[i]);
 		printf("\r\n");
 
 		printf("ok\r\n");
