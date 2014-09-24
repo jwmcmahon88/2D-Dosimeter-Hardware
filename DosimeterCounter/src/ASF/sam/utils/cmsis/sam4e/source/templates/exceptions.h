@@ -1,9 +1,9 @@
 /**
  * \file
  *
- * \brief SAM4S clock configuration.
+ * \brief This file contains the interface for default exception handlers.
  *
- * Copyright (c) 2013 Atmel Corporation. All rights reserved.
+ * Copyright (c) 2013-2014 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -41,44 +41,31 @@
  *
  */
 
-#ifndef CONF_CLOCK_H_INCLUDED
-#define CONF_CLOCK_H_INCLUDED
+#ifndef EXCEPTIONS_H_INCLUDED
+#define EXCEPTIONS_H_INCLUDED
 
-#define CONFIG_SYSCLK_SOURCE        SYSCLK_SRC_PLLACK
+#include "sam4e.h"
 
-// ===== System Clock (MCK) Prescaler Options   (Fmck = Fsys / (SYSCLK_PRES))
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_1
-#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_2
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_4
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_8
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_16
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_32
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_64
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_3
+/* @cond 0 */
+/**INDENT-OFF**/
+#ifdef __cplusplus
+extern "C" {
+#endif
+/**INDENT-ON**/
+/* @endcond */
 
-// ===== PLL0 (A) Options   (Fpll = (Fclk * PLL_mul) / PLL_div)
-// Use mul and div effective values here.
-#define CONFIG_PLL0_SOURCE          PLL_SRC_MAINCK_XTAL
-#define CONFIG_PLL0_MUL             16
-#define CONFIG_PLL0_DIV             1
+/* Function prototype for exception table items (interrupt handler). */
+typedef void (*IntFunc) (void);
 
-// ===== USB Clock Source Options   (Fusb = FpllX / USB_div)
-// Use div effective value here.
-#define CONFIG_USBCLK_SOURCE        USBCLK_SRC_PLL0
-#define CONFIG_USBCLK_DIV           4
+/* Default empty handler */
+void Dummy_Handler(void);
 
-// ===== Target frequency (System clock)
-// - XTAL frequency: 12MHz
-// - System clock source: PLLA
-// - System clock prescaler: 2 (divided by 2)
-// - PLLA source: XTAL
-// - PLLA output: XTAL * 16 / 1
-// - System clock: 12 * 16 / 1 / 2 = 96MHz
-// ===== Target frequency (USB Clock)
-// - USB clock source: PLLA
-// - USB clock divider: 4 (divided by 4)
-// - PLLA output: XTAL * 16 / 1
-// - USB clock: 12 * 16 / 1 / 4 = 48MHz
+/* @cond 0 */
+/**INDENT-OFF**/
+#ifdef __cplusplus
+}
+#endif
+/**INDENT-ON**/
+/* @endcond */
 
-
-#endif /* CONF_CLOCK_H_INCLUDED */
+#endif /* EXCEPTIONS_H_INCLUDED */

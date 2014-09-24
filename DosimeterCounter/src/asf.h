@@ -56,9 +56,6 @@
 #include <compiler.h>
 #include <status_codes.h>
 
-// From module: GPIO - General purpose Input/Output
-#include <gpio.h>
-
 // From module: Generic board support
 #include <board.h>
 
@@ -78,14 +75,20 @@
 // From module: Part identification macros
 #include <parts.h>
 
-// From module: SAM4S Xplained LED support enabled
+// From module: SAM FPU driver
+#include <fpu.h>
+
+// From module: SAM4E EK LED support enabled
 #include <led.h>
+
+// From module: SAM4E startup code
+#include <exceptions.h>
 
 // From module: Sleep manager - SAM implementation
 #include <sam/sleepmgr.h>
 #include <sleepmgr.h>
 
-// From module: System Clock Control - SAM4S implementation
+// From module: System Clock Control - SAM4E implementation
 #include <sysclk.h>
 
 // From module: TC - Timer Counter

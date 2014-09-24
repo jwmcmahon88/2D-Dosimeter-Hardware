@@ -1,4 +1,3 @@
-
 #include <asf.h>
 #include <inttypes.h>
 #include <string.h>
@@ -6,10 +5,8 @@
 #define COUNTER_PIO PIOA
 #define COUNTER_PIO_ID ID_PIOA
 #define COUNTER_IRQ_PRIORITY 0
-#define COUNTER_PRIMARY_PIN PIO_PA13
-#define COUNTER_SECONDRY_PIN PIO_PA14
-#define COUNTER_STEP_PIN PIO_PA4
-#define COUNTER_DIR_PIN PIO_PA3
+#define COUNTER_STEP_PIN PIO_PA6
+#define COUNTER_DIR_PIN PIO_PA26
 
 #define COUNTER_TC TC0
 #define PRIMARY_TC_CHANNEL 1
@@ -31,40 +28,24 @@ volatile uint16_t secondary_count[HEAD_STEPS_MAX];
 
 void parse_gcode(const char *line, uint8_t length);
 
-static void Trigger_Primary(uint32_t id, uint32_t pin)
-{
-	if (!enable_count)
-		return;
-
-	uint16_t current = primary_count[head_position];
-
-	// Avoid counter overflow
-	if (current < UINT16_MAX)
-		primary_count[head_position]++;
-}
-
-static void Trigger_Secondary(uint32_t id, uint32_t pin)
-{
-	if (!enable_count)
-		return;
-
-	uint16_t current = secondary_count[head_position];
-
-	// Avoid counter overflow
-	if (current < UINT16_MAX)
-		secondary_count[head_position]++;
-}
-
 static void Trigger_Step(uint32_t id, uint32_t pin)
 {
 	head_position += pio_get(COUNTER_PIO, PIO_INPUT, COUNTER_DIR_PIN) ? 1 : -1;
 
+	if (enable_count)
+	{
+		primary_count[head_position] += tc_read_cv(COUNTER_TC, PRIMARY_TC_CHANNEL);
+		secondary_count[head_position] += tc_read_cv(COUNTER_TC, SECONDARY_TC_CHANNEL);
+		tc_sync_trigger(COUNTER_TC);
+	}
+
+
 	// Check limits and loop around the buffer if we overflow
 	if (head_position < 0)
-		head_position += HEAD_STEPS_MAX;
+	head_position += HEAD_STEPS_MAX;
 	
 	if (head_position >= HEAD_STEPS_MAX)
-		head_position -= HEAD_STEPS_MAX;
+	head_position -= HEAD_STEPS_MAX;
 }
 
 void parse_gcode(const char *line, uint8_t length)
@@ -98,6 +79,7 @@ void parse_gcode(const char *line, uint8_t length)
 			return;
 		}
 
+		tc_sync_trigger(COUNTER_TC);
 		enable_count = true;
 		printf("ok\n");
 		return;
@@ -163,7 +145,7 @@ void parse_gcode(const char *line, uint8_t length)
 		// but text is easier to debug using a terminal
 		uint16_t *output = channel == 1 ? secondary_count : primary_count;
 		for (int32_t i = start; i <= end; i++)
-			printf("%u ", output[i]);
+		printf("%u ", output[i]);
 		printf("\n");
 
 		printf("ok\n");
@@ -184,13 +166,8 @@ void parse_gcode(const char *line, uint8_t length)
 		printf("ok\n");
 		return;
 	}
-	
-	// Read counter 0 (tclk0)
-	uint32_t primary = tc_read_cv(COUNTER_TC, PRIMARY_TC_CHANNEL);
-	uint32_t secondary = tc_read_cv(COUNTER_TC, SECONDARY_TC_CHANNEL);
-	tc_sync_trigger(COUNTER_TC);
-	printf("counter: %"PRIu32" %"PRIu32"\n", primary, secondary);
-	printf("error: unknown command '%s'\r\n", line);
+
+	printf("error: unknown command '%s'\n", line);
 }
 
 int main (void)
@@ -203,36 +180,29 @@ int main (void)
 	stdio_usb_init();
 
 	// Count primary counts in channel 0 (attached to TCLK0, PA4)
-	// Count secondary counts in channel 2 (attached to TIOA1, PA15) 
+	// Count secondary counts in channel 2 (attached to TIOA1, PA15)
 
 	pmc_enable_periph_clk(PRIMARY_TC_CHANNEL_ID);
 	pmc_enable_periph_clk(SECONDARY_TC_CHANNEL_ID);
+	pmc_enable_periph_clk(COUNTER_PIO_ID);
 
-	ioport_set_pin_mode(PIN_TC0_TIOA1, PIN_TC0_TIOA1_MUX);
-	ioport_disable_pin(PIN_TC0_TIOA1);
+	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_INPUT, PIO_PA4 | PIO_PA28, 0);
 	
-	tc_init(COUNTER_TC, PRIMARY_TC_CHANNEL, TC_CMR_TCCLKS_XC0);
-	tc_init(COUNTER_TC, SECONDARY_TC_CHANNEL, TC_CMR_TCCLKS_XC2);
-	
-	tc_set_block_mode(COUNTER_TC, TC_BMR_TC2XC2S_TIOA1);
+	tc_init(COUNTER_TC, PRIMARY_TC_CHANNEL, TC_CMR_TCCLKS_XC0); // TCLK0 -> PA4
+	tc_init(COUNTER_TC, SECONDARY_TC_CHANNEL, TC_CMR_TCCLKS_XC1); // TCLK1 -> PA28
 
 	tc_start(COUNTER_TC, PRIMARY_TC_CHANNEL);
 	tc_start(COUNTER_TC, SECONDARY_TC_CHANNEL);
 
-	// Set u; input pins
+	// Enable step tracking
 	pmc_enable_periph_clk(COUNTER_PIO_ID);
-	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_INPUT, COUNTER_PRIMARY_PIN | COUNTER_SECONDRY_PIN | COUNTER_STEP_PIN | COUNTER_DIR_PIN, 0);
-
-	pio_handler_set(COUNTER_PIO, ID_PIOA, COUNTER_PRIMARY_PIN, PIO_IT_RISE_EDGE, Trigger_Primary);
-	pio_handler_set(COUNTER_PIO, ID_PIOA, COUNTER_SECONDRY_PIN, PIO_IT_RISE_EDGE, Trigger_Secondary);
+	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_INPUT, COUNTER_STEP_PIN | COUNTER_DIR_PIN, 0);
 	pio_handler_set(COUNTER_PIO, ID_PIOA, COUNTER_STEP_PIN, PIO_IT_RISE_EDGE, Trigger_Step);
-
 	pio_set_input(COUNTER_PIO, COUNTER_STEP_PIN, PIO_DEGLITCH);
 
 	NVIC_EnableIRQ((IRQn_Type)COUNTER_PIO_ID);
 	pio_handler_set_priority(COUNTER_PIO, (IRQn_Type)COUNTER_PIO_ID, COUNTER_IRQ_PRIORITY);
-	pio_enable_interrupt(COUNTER_PIO, COUNTER_PRIMARY_PIN | COUNTER_SECONDRY_PIN | COUNTER_STEP_PIN);
-
+	pio_enable_interrupt(COUNTER_PIO, COUNTER_STEP_PIN);
 
 	// The main loop only needs to parse commands.
 	// The counting and position monitoring is handled by interrupts.
@@ -245,7 +215,7 @@ int main (void)
 		{
 			// buflen will wrap to 0 on increment.  Notify the caller of the data loss
 			if (buflen == 255)
-				printf("WARNING: input buffer full.  Buffered data have been discarded.\r\n");
+			printf("WARNING: input buffer full.  Buffered data have been discarded.\r\n");
 
 			char c = udi_cdc_getc();
 			if (c == '\n' || c == '\r')
@@ -255,7 +225,7 @@ int main (void)
 				buflen = 0;
 			}
 			else
-				linebuf[buflen++] = c;
+			linebuf[buflen++] = c;
 		}
 	}
 }

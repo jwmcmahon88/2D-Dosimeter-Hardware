@@ -1,8 +1,6 @@
 /**
  * \file
  *
- * \brief SAM4S clock configuration.
- *
  * Copyright (c) 2013 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
@@ -41,44 +39,27 @@
  *
  */
 
-#ifndef CONF_CLOCK_H_INCLUDED
-#define CONF_CLOCK_H_INCLUDED
+#ifndef _SAM4E_GPBR_COMPONENT_
+#define _SAM4E_GPBR_COMPONENT_
 
-#define CONFIG_SYSCLK_SOURCE        SYSCLK_SRC_PLLACK
+/* ============================================================================= */
+/**  SOFTWARE API DEFINITION FOR General Purpose Backup Register */
+/* ============================================================================= */
+/** \addtogroup SAM4E_GPBR General Purpose Backup Register */
+/*@{*/
 
-// ===== System Clock (MCK) Prescaler Options   (Fmck = Fsys / (SYSCLK_PRES))
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_1
-#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_2
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_4
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_8
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_16
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_32
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_64
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_3
+#if !(defined(__ASSEMBLY__) || defined(__IAR_SYSTEMS_ASM__))
+/** \brief Gpbr hardware registers */
+typedef struct {
+  RwReg SYS_GPBR[20]; /**< \brief (Gpbr Offset: 0x0) General Purpose Backup Register */
+} Gpbr;
+#endif /* !(defined(__ASSEMBLY__) || defined(__IAR_SYSTEMS_ASM__)) */
+/* -------- SYS_GPBR[20] : (GPBR Offset: 0x0) General Purpose Backup Register -------- */
+#define SYS_GPBR_GPBR_VALUE_Pos 0
+#define SYS_GPBR_GPBR_VALUE_Msk (0xffffffffu << SYS_GPBR_GPBR_VALUE_Pos) /**< \brief (SYS_GPBR[20]) Value of GPBR x */
+#define SYS_GPBR_GPBR_VALUE(value) ((SYS_GPBR_GPBR_VALUE_Msk & ((value) << SYS_GPBR_GPBR_VALUE_Pos)))
 
-// ===== PLL0 (A) Options   (Fpll = (Fclk * PLL_mul) / PLL_div)
-// Use mul and div effective values here.
-#define CONFIG_PLL0_SOURCE          PLL_SRC_MAINCK_XTAL
-#define CONFIG_PLL0_MUL             16
-#define CONFIG_PLL0_DIV             1
-
-// ===== USB Clock Source Options   (Fusb = FpllX / USB_div)
-// Use div effective value here.
-#define CONFIG_USBCLK_SOURCE        USBCLK_SRC_PLL0
-#define CONFIG_USBCLK_DIV           4
-
-// ===== Target frequency (System clock)
-// - XTAL frequency: 12MHz
-// - System clock source: PLLA
-// - System clock prescaler: 2 (divided by 2)
-// - PLLA source: XTAL
-// - PLLA output: XTAL * 16 / 1
-// - System clock: 12 * 16 / 1 / 2 = 96MHz
-// ===== Target frequency (USB Clock)
-// - USB clock source: PLLA
-// - USB clock divider: 4 (divided by 4)
-// - PLLA output: XTAL * 16 / 1
-// - USB clock: 12 * 16 / 1 / 4 = 48MHz
+/*@}*/
 
 
-#endif /* CONF_CLOCK_H_INCLUDED */
+#endif /* _SAM4E_GPBR_COMPONENT_ */

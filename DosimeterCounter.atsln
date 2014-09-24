@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Atmel Studio Solution File, Format Version 11.00
-Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "DosimeterCounter", "DosimeterCounter\DosimeterCounter.cproj", "{9980BFDF-A2CF-4F2D-9504-BEA5A19CF1C3}"
+Project("{54F91283-7BC4-4236-8FF9-10F437C3AD48}") = "DosimeterCounter", "DosimeterCounter\DosimeterCounter.cproj", "{C257C5A5-7567-4FCA-881C-3706694C6D9C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -9,10 +9,10 @@ Global
 		Release|ARM = Release|ARM
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{9980BFDF-A2CF-4F2D-9504-BEA5A19CF1C3}.Debug|ARM.ActiveCfg = Debug|ARM
-		{9980BFDF-A2CF-4F2D-9504-BEA5A19CF1C3}.Debug|ARM.Build.0 = Debug|ARM
-		{9980BFDF-A2CF-4F2D-9504-BEA5A19CF1C3}.Release|ARM.ActiveCfg = Release|ARM
-		{9980BFDF-A2CF-4F2D-9504-BEA5A19CF1C3}.Release|ARM.Build.0 = Release|ARM
+		{C257C5A5-7567-4FCA-881C-3706694C6D9C}.Debug|ARM.ActiveCfg = Debug|ARM
+		{C257C5A5-7567-4FCA-881C-3706694C6D9C}.Debug|ARM.Build.0 = Debug|ARM
+		{C257C5A5-7567-4FCA-881C-3706694C6D9C}.Release|ARM.ActiveCfg = Release|ARM
+		{C257C5A5-7567-4FCA-881C-3706694C6D9C}.Release|ARM.Build.0 = Release|ARM
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

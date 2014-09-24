@@ -1,7 +1,7 @@
 /**
  * \file
  *
- * \brief SAM4S clock configuration.
+ * \brief FPU support for SAM.
  *
  * Copyright (c) 2013 Atmel Corporation. All rights reserved.
  *
@@ -41,44 +41,51 @@
  *
  */
 
-#ifndef CONF_CLOCK_H_INCLUDED
-#define CONF_CLOCK_H_INCLUDED
+#ifndef _FPU_H_INCLUDED_
+#define _FPU_H_INCLUDED_
 
-#define CONFIG_SYSCLK_SOURCE        SYSCLK_SRC_PLLACK
+#include <compiler.h>
 
-// ===== System Clock (MCK) Prescaler Options   (Fmck = Fsys / (SYSCLK_PRES))
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_1
-#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_2
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_4
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_8
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_16
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_32
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_64
-//#define CONFIG_SYSCLK_PRES          SYSCLK_PRES_3
+/** Address for ARM CPACR */
+#define ADDR_CPACR 0xE000ED88
 
-// ===== PLL0 (A) Options   (Fpll = (Fclk * PLL_mul) / PLL_div)
-// Use mul and div effective values here.
-#define CONFIG_PLL0_SOURCE          PLL_SRC_MAINCK_XTAL
-#define CONFIG_PLL0_MUL             16
-#define CONFIG_PLL0_DIV             1
+/** CPACR Register */
+#define REG_CPACR  (*((volatile uint32_t *)ADDR_CPACR))
 
-// ===== USB Clock Source Options   (Fusb = FpllX / USB_div)
-// Use div effective value here.
-#define CONFIG_USBCLK_SOURCE        USBCLK_SRC_PLL0
-#define CONFIG_USBCLK_DIV           4
+/**
+ * \brief Enable FPU
+ */
+__always_inline static void fpu_enable(void)
+{
+	irqflags_t flags;
+	flags = cpu_irq_save();
+	REG_CPACR |=  (0xFu << 20);
+	__DSB();
+	__ISB();
+	cpu_irq_restore(flags);
+}
 
-// ===== Target frequency (System clock)
-// - XTAL frequency: 12MHz
-// - System clock source: PLLA
-// - System clock prescaler: 2 (divided by 2)
-// - PLLA source: XTAL
-// - PLLA output: XTAL * 16 / 1
-// - System clock: 12 * 16 / 1 / 2 = 96MHz
-// ===== Target frequency (USB Clock)
-// - USB clock source: PLLA
-// - USB clock divider: 4 (divided by 4)
-// - PLLA output: XTAL * 16 / 1
-// - USB clock: 12 * 16 / 1 / 4 = 48MHz
+/**
+ * \brief Disable FPU
+ */
+__always_inline static void fpu_disable(void)
+{
+	irqflags_t flags;
+	flags = cpu_irq_save();
+	REG_CPACR &= ~(0xFu << 20);
+	__DSB();
+	__ISB();
+	cpu_irq_restore(flags);
+}
 
+/**
+ * \brief Check if FPU is enabled
+ *
+ * \return Return ture if FPU is enabled, otherwise return false.
+ */
+__always_inline static bool fpu_is_enabled(void)
+{
+	return (REG_CPACR & (0xFu << 20));
+}
 
-#endif /* CONF_CLOCK_H_INCLUDED */
+#endif /* _FPU_H_INCLUDED_ */
