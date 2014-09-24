@@ -88,6 +88,9 @@
 // From module: System Clock Control - SAM4S implementation
 #include <sysclk.h>
 
+// From module: TC - Timer Counter
+#include <tc.h>
+
 // From module: USB CDC Protocol
 #include <usb_protocol_cdc.h>
 

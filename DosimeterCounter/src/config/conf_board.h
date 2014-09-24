@@ -3,7 +3,7 @@
  *
  * \brief Board configuration.
  *
- * Copyright (c) 2011 - 2013 Atmel Corporation. All rights reserved.
+ * Copyright (c) 2012-2014 Atmel Corporation. All rights reserved.
  *
  * \asf_license_start
  *
@@ -44,38 +44,35 @@
 #ifndef CONF_BOARD_H_INCLUDED
 #define CONF_BOARD_H_INCLUDED
 
-/* Configure UART pins */
+/** Enable Com Port. */
 #define CONF_BOARD_UART_CONSOLE
 
-/* The SAM4S Xplain has one push button only */
-#define BOARD_NO_PUSHBUTTON_2
+//! [tc_define_peripheral]
+/* Use TC Peripheral 0. */
+#define TC             TC0
+#define TC_PERIPHERAL  0
+//! [tc_define_peripheral]
 
-/* Configure SPI pins */
-//#define CONF_BOARD_SPI
-//#define CONF_BOARD_SPI_NPCS0
-//#define CONF_BOARD_SPI_NPCS1
-//#define CONF_BOARD_SPI_NPCS2
-//#define CONF_BOARD_SPI_NPCS3
+//! [tc_define_ch1]
+/* Configure TC0 channel 1 as waveform output. */
+#define TC_CHANNEL_WAVEFORM 1
+#define ID_TC_WAVEFORM      ID_TC1
+#define PIN_TC_WAVEFORM     PIN_TC0_TIOA1
+#define PIN_TC_WAVEFORM_MUX PIN_TC0_TIOA1_MUX
+//! [tc_define_ch1]
 
-/*
- * Enable USART pins according to application.
- */
-/* Configure USART RXD pin */
-//#define CONF_BOARD_USART_RXD
+//! [tc_define_ch2]
+/* Configure TC0 channel 2 as capture input. */
+#define TC_CHANNEL_CAPTURE 2
+#define ID_TC_CAPTURE ID_TC2
+#define PIN_TC_CAPTURE PIN_TC0_TIOA2
+#define PIN_TC_CAPTURE_MUX PIN_TC0_TIOA2_MUX
+//! [tc_define_ch2]
 
-/* Configure USART TXD pin */
-//#define CONF_BOARD_USART_TXD
-
-/* Configure USART CTS pin */
-//#define CONF_BOARD_USART_CTS
-
-/* Configure USART RTS pin */
-//#define CONF_BOARD_USART_RTS
-
-/* Configure USART synchronous communication SCK pin */
-//#define CONF_BOARD_USART_SCK
-
-/* Configure SRAM pin */
-// #define CONF_BOARD_SRAM
+//! [tc_define_irq_handler]
+/* Use TC2_Handler for TC capture interrupt. */
+#define TC_Handler  TC2_Handler
+#define TC_IRQn     TC2_IRQn
+//! [tc_define_irq_handler]
 
 #endif /* CONF_BOARD_H_INCLUDED */

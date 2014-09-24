@@ -11,6 +11,12 @@
 #define COUNTER_STEP_PIN PIO_PA4
 #define COUNTER_DIR_PIN PIO_PA3
 
+#define COUNTER_TC TC0
+#define PRIMARY_TC_CHANNEL 1
+#define PRIMARY_TC_CHANNEL_ID ID_TC1
+#define SECONDARY_TC_CHANNEL 2
+#define SECONDARY_TC_CHANNEL_ID ID_TC2
+
 // The maximum offset of the head in steps
 // This defines the size of the count buffers
 #define HEAD_STEPS_MAX 8000
@@ -179,7 +185,12 @@ void parse_gcode(const char *line, uint8_t length)
 		return;
 	}
 	
-	printf("error: unknown command '%s'\n", line);
+	// Read counter 0 (tclk0)
+	uint32_t primary = tc_read_cv(COUNTER_TC, PRIMARY_TC_CHANNEL);
+	uint32_t secondary = tc_read_cv(COUNTER_TC, SECONDARY_TC_CHANNEL);
+	tc_sync_trigger(COUNTER_TC);
+	printf("counter: %"PRIu32" %"PRIu32"\n", primary, secondary);
+	printf("error: unknown command '%s'\r\n", line);
 }
 
 int main (void)
@@ -191,7 +202,24 @@ int main (void)
 	cpu_irq_enable();
 	stdio_usb_init();
 
-	// Set up input pins
+	// Count primary counts in channel 0 (attached to TCLK0, PA4)
+	// Count secondary counts in channel 2 (attached to TIOA1, PA15) 
+
+	pmc_enable_periph_clk(PRIMARY_TC_CHANNEL_ID);
+	pmc_enable_periph_clk(SECONDARY_TC_CHANNEL_ID);
+
+	ioport_set_pin_mode(PIN_TC0_TIOA1, PIN_TC0_TIOA1_MUX);
+	ioport_disable_pin(PIN_TC0_TIOA1);
+	
+	tc_init(COUNTER_TC, PRIMARY_TC_CHANNEL, TC_CMR_TCCLKS_XC0);
+	tc_init(COUNTER_TC, SECONDARY_TC_CHANNEL, TC_CMR_TCCLKS_XC2);
+	
+	tc_set_block_mode(COUNTER_TC, TC_BMR_TC2XC2S_TIOA1);
+
+	tc_start(COUNTER_TC, PRIMARY_TC_CHANNEL);
+	tc_start(COUNTER_TC, SECONDARY_TC_CHANNEL);
+
+	// Set u; input pins
 	pmc_enable_periph_clk(COUNTER_PIO_ID);
 	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_INPUT, COUNTER_PRIMARY_PIN | COUNTER_SECONDRY_PIN | COUNTER_STEP_PIN | COUNTER_DIR_PIN, 0);
 
@@ -205,6 +233,7 @@ int main (void)
 	pio_handler_set_priority(COUNTER_PIO, (IRQn_Type)COUNTER_PIO_ID, COUNTER_IRQ_PRIORITY);
 	pio_enable_interrupt(COUNTER_PIO, COUNTER_PRIMARY_PIN | COUNTER_SECONDRY_PIN | COUNTER_STEP_PIN);
 
+
 	// The main loop only needs to parse commands.
 	// The counting and position monitoring is handled by interrupts.
 	char linebuf[256];
@@ -216,10 +245,10 @@ int main (void)
 		{
 			// buflen will wrap to 0 on increment.  Notify the caller of the data loss
 			if (buflen == 255)
-				printf("WARNING: input buffer full.  Buffered data have been discarded.\n");
+				printf("WARNING: input buffer full.  Buffered data have been discarded.\r\n");
 
 			char c = udi_cdc_getc();
-			if (c == '\n')
+			if (c == '\n' || c == '\r')
 			{
 				linebuf[buflen++] = '\0';
 				parse_gcode(linebuf, buflen);
