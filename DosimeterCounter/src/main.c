@@ -34,18 +34,18 @@ static void Trigger_Step(uint32_t id, uint32_t pin)
 
 	if (enable_count)
 	{
-		primary_count[head_position] += tc_read_cv(COUNTER_TC, PRIMARY_TC_CHANNEL);
-		secondary_count[head_position] += tc_read_cv(COUNTER_TC, SECONDARY_TC_CHANNEL);
+		primary_count[head_position] += (uint16_t)tc_read_cv(COUNTER_TC, PRIMARY_TC_CHANNEL);
+		secondary_count[head_position] += (uint16_t)tc_read_cv(COUNTER_TC, SECONDARY_TC_CHANNEL);
 		tc_sync_trigger(COUNTER_TC);
 	}
 
 
 	// Check limits and loop around the buffer if we overflow
 	if (head_position < 0)
-	head_position += HEAD_STEPS_MAX;
+		head_position += HEAD_STEPS_MAX;
 	
 	if (head_position >= HEAD_STEPS_MAX)
-	head_position -= HEAD_STEPS_MAX;
+		head_position -= HEAD_STEPS_MAX;
 }
 
 void parse_gcode(const char *line, uint8_t length)
@@ -143,9 +143,9 @@ void parse_gcode(const char *line, uint8_t length)
 
 		// TODO: This really should transfer in binary,
 		// but text is easier to debug using a terminal
-		uint16_t *output = channel == 1 ? secondary_count : primary_count;
+		volatile uint16_t *output = channel == 1 ? secondary_count : primary_count;
 		for (int32_t i = start; i <= end; i++)
-		printf("%u ", output[i]);
+			printf("%"PRIu16" ", output[i]);
 		printf("\n");
 
 		printf("ok\n");
@@ -161,8 +161,12 @@ void parse_gcode(const char *line, uint8_t length)
 			return;
 		}
 
-		memset((uint16_t *)primary_count, 0, 2 * HEAD_STEPS_MAX);
-		memset((uint16_t *)secondary_count, 0, 2 * HEAD_STEPS_MAX);
+		for (uint16_t i = 0; i < HEAD_STEPS_MAX; i++)
+		{
+			primary_count[i] = secondary_count[i] = 0;
+		}
+//		memset((uint16_t *)primary_count, 0, 2 * HEAD_STEPS_MAX);
+//		memset((uint16_t *)secondary_count, 0, 2 * HEAD_STEPS_MAX);
 		printf("ok\n");
 		return;
 	}
@@ -179,6 +183,11 @@ int main (void)
 	cpu_irq_enable();
 	stdio_usb_init();
 
+
+	pmc_enable_periph_clk(ID_PIOC);
+	pio_configure(PIOC, PIO_TYPE_PIO_PERIPH_B, PIO_PC25 | PIO_PC28, 0);
+	//pio_set_multi_driver(PIOC, PIO_PC25 | PIO_PC28, true);
+
 	// Count primary counts in channel 0 (attached to TCLK0, PA4)
 	// Count secondary counts in channel 2 (attached to TIOA1, PA15)
 
@@ -186,8 +195,9 @@ int main (void)
 	pmc_enable_periph_clk(SECONDARY_TC_CHANNEL_ID);
 	pmc_enable_periph_clk(COUNTER_PIO_ID);
 
-	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_INPUT, PIO_PA4 | PIO_PA28, 0);
-	
+	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_PERIPH_B, PIO_PA4 | PIO_PA28, 0);
+	//pio_set_multi_driver(COUNTER_PIO, PIO_PA4 | PIO_PA28, true);
+
 	tc_init(COUNTER_TC, PRIMARY_TC_CHANNEL, TC_CMR_TCCLKS_XC0); // TCLK0 -> PA4
 	tc_init(COUNTER_TC, SECONDARY_TC_CHANNEL, TC_CMR_TCCLKS_XC1); // TCLK1 -> PA28
 
