@@ -5,8 +5,8 @@
 #define COUNTER_PIO PIOA
 #define COUNTER_PIO_ID ID_PIOA
 #define COUNTER_IRQ_PRIORITY 0
-#define COUNTER_STEP_PIN PIO_PA6
-#define COUNTER_DIR_PIN PIO_PA26
+#define COUNTER_STEP_PIN PIO_PA30
+#define COUNTER_DIR_PIN PIO_PA31
 
 #define COUNTER_TC TC0
 #define PRIMARY_TC_CHANNEL 1
@@ -161,12 +161,8 @@ void parse_gcode(const char *line, uint8_t length)
 			return;
 		}
 
-		for (uint16_t i = 0; i < HEAD_STEPS_MAX; i++)
-		{
-			primary_count[i] = secondary_count[i] = 0;
-		}
-//		memset((uint16_t *)primary_count, 0, 2 * HEAD_STEPS_MAX);
-//		memset((uint16_t *)secondary_count, 0, 2 * HEAD_STEPS_MAX);
+		memset((uint16_t *)primary_count, 0, 2 * HEAD_STEPS_MAX);
+		memset((uint16_t *)secondary_count, 0, 2 * HEAD_STEPS_MAX);
 		printf("ok\n");
 		return;
 	}
@@ -183,20 +179,13 @@ int main (void)
 	cpu_irq_enable();
 	stdio_usb_init();
 
-
-	pmc_enable_periph_clk(ID_PIOC);
-	pio_configure(PIOC, PIO_TYPE_PIO_PERIPH_B, PIO_PC25 | PIO_PC28, 0);
-	//pio_set_multi_driver(PIOC, PIO_PC25 | PIO_PC28, true);
-
 	// Count primary counts in channel 0 (attached to TCLK0, PA4)
-	// Count secondary counts in channel 2 (attached to TIOA1, PA15)
-
+	// Count secondary counts in channel 2 (attached to TCLK1, PA28)
 	pmc_enable_periph_clk(PRIMARY_TC_CHANNEL_ID);
 	pmc_enable_periph_clk(SECONDARY_TC_CHANNEL_ID);
 	pmc_enable_periph_clk(COUNTER_PIO_ID);
 
 	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_PERIPH_B, PIO_PA4 | PIO_PA28, 0);
-	//pio_set_multi_driver(COUNTER_PIO, PIO_PA4 | PIO_PA28, true);
 
 	tc_init(COUNTER_TC, PRIMARY_TC_CHANNEL, TC_CMR_TCCLKS_XC0); // TCLK0 -> PA4
 	tc_init(COUNTER_TC, SECONDARY_TC_CHANNEL, TC_CMR_TCCLKS_XC1); // TCLK1 -> PA28
@@ -235,7 +224,7 @@ int main (void)
 				buflen = 0;
 			}
 			else
-			linebuf[buflen++] = c;
+				linebuf[buflen++] = c;
 		}
 	}
 }
