@@ -30,7 +30,7 @@ void parse_gcode(const char *line, uint8_t length);
 
 static void Trigger_Step(uint32_t id, uint32_t pin)
 {
-	head_position += pio_get(COUNTER_PIO, PIO_INPUT, COUNTER_DIR_PIN) ? 1 : -1;
+	int32_t head_step = pio_get(COUNTER_PIO, PIO_INPUT, COUNTER_DIR_PIN) ? 1 : -1;
 
 	if (enable_count)
 	{
@@ -39,6 +39,7 @@ static void Trigger_Step(uint32_t id, uint32_t pin)
 		tc_sync_trigger(COUNTER_TC);
 	}
 
+	head_position += head_step;
 
 	// Check limits and loop around the buffer if we overflow
 	if (head_position < 0)
