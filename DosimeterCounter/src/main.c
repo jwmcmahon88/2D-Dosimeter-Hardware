@@ -13,6 +13,9 @@
 #define PRIMARY_TC_CHANNEL_ID ID_TC1
 #define SECONDARY_TC_CHANNEL 2
 #define SECONDARY_TC_CHANNEL_ID ID_TC2
+#define TERTIARY_TC_CHANNEL 3
+#define TERTIARY_TC_CHANNEL_ID ID_TC3
+
 
 // The maximum offset of the head in steps
 // This defines the size of the count buffers
@@ -25,6 +28,7 @@ volatile int32_t head_position;
 volatile bool enable_count = false;
 volatile uint16_t primary_count[HEAD_STEPS_MAX];
 volatile uint16_t secondary_count[HEAD_STEPS_MAX];
+volatile uint16_t tertiary_count[HEAD_STEPS_MAX];
 
 void parse_gcode(const char *line, uint8_t length);
 
@@ -36,6 +40,7 @@ static void Trigger_Step(uint32_t id, uint32_t pin)
 	{
 		primary_count[head_position] += (uint16_t)tc_read_cv(COUNTER_TC, PRIMARY_TC_CHANNEL);
 		secondary_count[head_position] += (uint16_t)tc_read_cv(COUNTER_TC, SECONDARY_TC_CHANNEL);
+		tertiary_count[head_position] += (uint16_t)tc_read_cv(COUNTER_TC, TERTIARY_TC_CHANNEL);
 		tc_sync_trigger(COUNTER_TC);
 	}
 
@@ -116,27 +121,15 @@ void parse_gcode(const char *line, uint8_t length)
 			return;
 		}
 
-		if (channel != 0 && channel != 1)
+		if (channel < 0 || channel > 2)
 		{
-			printf("error: channel must be 0 or 1\n");
+			printf("error: invalid counter\n");
 			return;
 		}
 
-		if (start < 0 || start >= HEAD_STEPS_MAX)
+		if (start < 0 || start >= HEAD_STEPS_MAX || end < 0 || end >= HEAD_STEPS_MAX || start > end)
 		{
-			printf("error: start column must be in the range 0..%d\n", HEAD_STEPS_MAX);
-			return;
-		}
-		
-		if (end < 0 || end >= HEAD_STEPS_MAX)
-		{
-			printf("error: end column must be in the range 0..%d\n", HEAD_STEPS_MAX);
-			return;
-		}
-
-		if (start > end)
-		{
-			printf("error: start column must less than or equal to end column\n");
+			printf("error: invalid column range\n");
 			return;
 		}
 
@@ -144,9 +137,9 @@ void parse_gcode(const char *line, uint8_t length)
 
 		// TODO: This really should transfer in binary,
 		// but text is easier to debug using a terminal
-		volatile uint16_t *output = channel == 1 ? secondary_count : primary_count;
+		volatile uint16_t *counts[3] = { primary_count, secondary_count, tertiary_count };
 		for (int32_t i = start; i <= end; i++)
-			printf("%"PRIu16" ", output[i]);
+			printf("%"PRIu16" ", counts[channel][i]);
 		printf("\n");
 
 		printf("ok\n");
@@ -162,8 +155,9 @@ void parse_gcode(const char *line, uint8_t length)
 			return;
 		}
 
-		memset((uint16_t *)primary_count, 0, 2 * HEAD_STEPS_MAX);
-		memset((uint16_t *)secondary_count, 0, 2 * HEAD_STEPS_MAX);
+		memset((uint8_t *)primary_count, 0, 2 * HEAD_STEPS_MAX);
+		memset((uint8_t *)secondary_count, 0, 2 * HEAD_STEPS_MAX);
+		memset((uint8_t *)tertiary_count, 0, 2 * HEAD_STEPS_MAX);
 		printf("ok\n");
 		return;
 	}
@@ -182,17 +176,21 @@ int main (void)
 
 	// Count primary counts in channel 0 (attached to TCLK0, PA4)
 	// Count secondary counts in channel 2 (attached to TCLK1, PA28)
+	// Count tertiary counts in channel 3 (attached to TCLK2, PA29)
 	pmc_enable_periph_clk(PRIMARY_TC_CHANNEL_ID);
 	pmc_enable_periph_clk(SECONDARY_TC_CHANNEL_ID);
+	pmc_enable_periph_clk(TERTIARY_TC_CHANNEL_ID);
 	pmc_enable_periph_clk(COUNTER_PIO_ID);
 
-	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_PERIPH_B, PIO_PA4 | PIO_PA28, 0);
+	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_PERIPH_B, PIO_PA4 | PIO_PA28 | PIO_PA29, 0);
 
 	tc_init(COUNTER_TC, PRIMARY_TC_CHANNEL, TC_CMR_TCCLKS_XC0); // TCLK0 -> PA4
 	tc_init(COUNTER_TC, SECONDARY_TC_CHANNEL, TC_CMR_TCCLKS_XC1); // TCLK1 -> PA28
+	tc_init(COUNTER_TC, TERTIARY_TC_CHANNEL, TC_CMR_TCCLKS_XC2); // TCLK2 -> PA29
 
 	tc_start(COUNTER_TC, PRIMARY_TC_CHANNEL);
 	tc_start(COUNTER_TC, SECONDARY_TC_CHANNEL);
+	tc_start(COUNTER_TC, TERTIARY_TC_CHANNEL);
 
 	// Enable step tracking
 	pmc_enable_periph_clk(COUNTER_PIO_ID);
