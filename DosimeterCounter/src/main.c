@@ -16,6 +16,13 @@
 #define TERTIARY_TC_CHANNEL 3
 #define TERTIARY_TC_CHANNEL_ID ID_TC3
 
+#define PIXEL_TC TC1
+#define PIXEL_CLOCK_CHANNEL 1
+#define PIXEL_CLOCK_CHANNEL_ID ID_TC4
+#define GATE_PIO PIOC
+#define GATE_PIO_ID ID_PIOC
+#define GATE_PIN_OUT PIO_PC26B_TIOA4
+
 
 // The maximum offset of the head in steps
 // This defines the size of the count buffers
@@ -31,6 +38,7 @@ volatile uint16_t secondary_count[HEAD_STEPS_MAX];
 volatile uint16_t tertiary_count[HEAD_STEPS_MAX];
 
 void parse_gcode(const char *line, uint8_t length);
+void init_hwtimers();
 
 static void Trigger_Step(uint32_t id, uint32_t pin)
 {
@@ -165,6 +173,42 @@ void parse_gcode(const char *line, uint8_t length)
 	printf("error: unknown command '%s'\n", line);
 }
 
+void init_hwtimers()
+{
+	// Count primary counts in channel 0 (attached to TCLK0, PA4)
+	// Count secondary counts in channel 2 (attached to TCLK1, PA28)
+	// Count tertiary counts in channel 3 (attached to TCLK2, PA29)
+	pmc_enable_periph_clk(PRIMARY_TC_CHANNEL_ID);
+	pmc_enable_periph_clk(SECONDARY_TC_CHANNEL_ID);
+	pmc_enable_periph_clk(TERTIARY_TC_CHANNEL_ID);
+	pmc_enable_periph_clk(PIXEL_CLOCK_CHANNEL_ID)
+	
+	//Connect counters to TC0
+	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_PERIPH_B, PIO_PA4 | PIO_PA28 | PIO_PA29, 0);
+	//Connect gate pins to the timers
+	//pio_configure(COUNTER_PIO, PIO_TYPE_PIO_PERIPH_B,PIO_PA0|PIO_PA15|PIO_PA26,0);
+	pio_configure(GATE_PIO,PIO_TYPE_PIO_PERIPH_B,GATE_PIN_OUT,1);
+	
+	
+	//Setup counter channels with external clock input, load RA on rising TIOA, load RB on falling TIOA and interrupt on both events
+	tc_init(COUNTER_TC, PRIMARY_TC_CHANNEL, TC_CMR_TCCLKS_XC0);// | TC_CMR_LDRA_RISING|TC_CMR_LDRB_FALLING); // TCLK0 -> PA4
+	tc_init(COUNTER_TC, SECONDARY_TC_CHANNEL, TC_CMR_TCCLKS_XC1);//|TC_CMR_LDRA_RISING|TC_CMR_LDRB_FALLING); // TCLK1 -> PA28
+	tc_init(COUNTER_TC, TERTIARY_TC_CHANNEL, TC_CMR_TCCLKS_XC2);//|TC_CMR_LDRA_RISING|TC_CMR_LDRB_FALLING); // TCLK2 -> PA29
+	//tc_enable_interrupt(COUNTER_TC,PRIMARY_TC_CHANNEL,TC_IER_LDRAS|TC_IER_LDRBS);
+	//NVIC_EnableIRQ((IRQn_Type)PIXEL_CLOCK_CHANNEL_ID)
+	//Set up gate waveform:
+	//TIMER_CLOCK5, Set TIOA on RA, Clear TIOA on RC and Software trigger,set to 0 on RC compare
+	tc_init(PIXEL_TC,PIXEL_CLOCK_CHANNEL,TC_CMR_WAVE|TC_CMR_WAVSEL_UP|TC_CMR_TCCLKS_TIMER_CLOCK5|TC_CMR_ACPA_SET|TC_CMR_ASWTRG_CLEAR|TC_CMR_ACPC_CLEAR|TC_CMR_CPCTRG);
+	tc_write_ra(PIXEL_TC,PIXEL_CLOCK_CHANNEL,500);
+	tc_write_rc(PIXEL_TC,PIXEL_CLOCK_CHANNEL,1000);
+	
+	tc_start(PIXEL_TC,PIXEL_CLOCK_CHANNEL);
+	tc_start(COUNTER_TC, PRIMARY_TC_CHANNEL);
+	tc_start(COUNTER_TC, SECONDARY_TC_CHANNEL);
+	tc_start(COUNTER_TC, TERTIARY_TC_CHANNEL);
+}
+
+
 int main (void)
 {
 	sysclk_init();
@@ -173,25 +217,8 @@ int main (void)
 	irq_initialize_vectors();
 	cpu_irq_enable();
 	stdio_usb_init();
-
-	// Count primary counts in channel 0 (attached to TCLK0, PA4)
-	// Count secondary counts in channel 2 (attached to TCLK1, PA28)
-	// Count tertiary counts in channel 3 (attached to TCLK2, PA29)
-	pmc_enable_periph_clk(PRIMARY_TC_CHANNEL_ID);
-	pmc_enable_periph_clk(SECONDARY_TC_CHANNEL_ID);
-	pmc_enable_periph_clk(TERTIARY_TC_CHANNEL_ID);
-	pmc_enable_periph_clk(COUNTER_PIO_ID);
-
-	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_PERIPH_B, PIO_PA4 | PIO_PA28 | PIO_PA29, 0);
-
-	tc_init(COUNTER_TC, PRIMARY_TC_CHANNEL, TC_CMR_TCCLKS_XC0); // TCLK0 -> PA4
-	tc_init(COUNTER_TC, SECONDARY_TC_CHANNEL, TC_CMR_TCCLKS_XC1); // TCLK1 -> PA28
-	tc_init(COUNTER_TC, TERTIARY_TC_CHANNEL, TC_CMR_TCCLKS_XC2); // TCLK2 -> PA29
-
-	tc_start(COUNTER_TC, PRIMARY_TC_CHANNEL);
-	tc_start(COUNTER_TC, SECONDARY_TC_CHANNEL);
-	tc_start(COUNTER_TC, TERTIARY_TC_CHANNEL);
-
+	
+	init_hwtimers()
 	// Enable step tracking
 	pmc_enable_periph_clk(COUNTER_PIO_ID);
 	pio_configure(COUNTER_PIO, PIO_TYPE_PIO_INPUT, COUNTER_STEP_PIN | COUNTER_DIR_PIN, 0);
